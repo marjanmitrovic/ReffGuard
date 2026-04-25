@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogIn, Shield, UserPlus } from "lucide-react";
+import { LogIn, UserPlus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type Mode = "login" | "signup";
@@ -182,8 +182,8 @@ export default function LoginPage() {
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md items-center justify-center">
         <div className="w-full rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-200">
           <div className="mb-6 flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900 text-white">
-              <Shield className="h-7 w-7" />
+            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-slate-900 shadow-sm ring-1 ring-slate-200">
+              <img src="/reffguard-icon.png" alt="ReffGuard" className="h-full w-full object-cover" />
             </div>
 
             <div>

@@ -72,6 +72,17 @@ export default function DemoPage() {
                 Demo prezentace aplikace
               </div>
 
+              <div className="mb-5 flex items-center gap-4">
+                <img
+                  src="/reffguard-icon.png"
+                  alt="ReffGuard"
+                  className="h-16 w-16 rounded-2xl object-cover shadow-lg ring-1 ring-white/20"
+                />
+                <div className="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-200">
+                  ReffGuard
+                </div>
+              </div>
+
               <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
                 Delegace rozhodčích
               </h1>
