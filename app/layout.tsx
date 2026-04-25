@@ -3,13 +3,14 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+    process.env.NEXT_PUBLIC_SITE_URL || "https://reff-guard.vercel.app/"
   ),
   title: "ReffGuard – Delegace rozhodčích",
   description: "Jednoduchá aplikace pro delegování a přihlašování rozhodčích.",
   icons: {
-    icon: "/icon.png",
-    apple: "/apple-icon.png",
+    icon: "/reffguard-icon.png",
+    shortcut: "/reffguard-icon.png",
+    apple: "/reffguard-icon.png",
   },
   manifest: "/manifest.json",
   openGraph: {

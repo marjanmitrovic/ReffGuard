@@ -1,19 +1,14 @@
 {
-  "name": "ReffGuard – Delegace rozhodčích",
+  "name": "ReffGuard",
   "short_name": "ReffGuard",
-  "description": "Aplikace pro delegování a přihlašování fotbalových rozhodčích.",
+  "description": "Aplikace pro delegace rozhodčích",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
+  "background_color": "#f1f5f9",
   "theme_color": "#0f172a",
   "icons": [
     {
-      "src": "/reffguard-icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/reffguard-icon-512.png",
+      "src": "/reffguard-icon.png",
       "sizes": "512x512",
       "type": "image/png"
     }
