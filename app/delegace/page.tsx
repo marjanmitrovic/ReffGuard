@@ -1,0 +1,261 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { Calendar, Clock, LogOut, MapPin, Share2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { formatDate, formatTime } from "@/lib/date";
+
+type AppRole = "admin" | "referee";
+
+type DbMatch = {
+  id: number;
+  match_date: string;
+  match_time: string;
+  competition: string;
+  home_team: string;
+  away_team: string;
+  location: string;
+  needed_refs: number;
+  status: "open" | "full" | "confirmed";
+};
+
+type DbApplication = {
+  id: number;
+  match_id: number;
+  user_id: string;
+  status: "sent" | "approved" | "rejected";
+  applied_at: string;
+};
+
+type DbUser = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+};
+
+type DelegationView = {
+  id: string;
+  matchId: number;
+  date: string;
+  time: string;
+  competition: string;
+  home: string;
+  away: string;
+  location: string;
+  mainReferee: string;
+  assistants: string[];
+};
+
+type InternalDelegationView = DelegationView & {
+  approvedUserIds: string[];
+};
+
+export default function DelegacePage() {
+  const [role, setRole] = useState<AppRole | null>(null);
+  const [userName, setUserName] = useState("Uživatel");
+  const [delegations, setDelegations] = useState<DelegationView[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+
+  const loadDelegations = async (currentRole: AppRole, currentUserId: string) => {
+    setMessage("");
+
+    const { data: matchesData, error: matchesError } = await supabase
+      .from("matches")
+      .select("*")
+      .eq("status", "confirmed")
+      .order("match_date", { ascending: true })
+      .order("match_time", { ascending: true });
+
+    if (matchesError) {
+      setMessage(matchesError.message);
+      setDelegations([]);
+      return;
+    }
+
+    const matches = (matchesData ?? []) as DbMatch[];
+    if (matches.length === 0) {
+      setDelegations([]);
+      return;
+    }
+
+    const matchIds = matches.map((m) => m.id);
+
+    const { data: appsData, error: appsError } = await supabase
+      .from("applications")
+      .select("*")
+      .in("match_id", matchIds)
+      .eq("status", "approved")
+      .order("applied_at", { ascending: true });
+
+    if (appsError) {
+      setMessage(appsError.message);
+      setDelegations([]);
+      return;
+    }
+
+    const approvedApps = (appsData ?? []) as DbApplication[];
+    const userIds = [...new Set(approvedApps.map((a) => a.user_id))];
+    const userMap = new Map<string, string>();
+
+    if (userIds.length > 0) {
+      const { data: usersData, error: usersError } = await supabase
+        .from("users")
+        .select("id, full_name, email")
+        .in("id", userIds);
+
+      if (usersError) {
+        setMessage(usersError.message);
+        return;
+      }
+
+      ((usersData ?? []) as DbUser[]).forEach((u) => {
+        userMap.set(u.id, u.full_name || u.email || "Neznámý uživatel");
+      });
+    }
+
+    const built: InternalDelegationView[] = matches.map((match) => {
+      const refs = approvedApps.filter((a) => a.match_id === match.id).slice(0, match.needed_refs);
+      const names = refs.map((r) => userMap.get(r.user_id) || "Neznámý uživatel");
+
+      return {
+        id: `delegation-${match.id}`,
+        matchId: match.id,
+        date: match.match_date,
+        time: match.match_time,
+        competition: match.competition,
+        home: match.home_team,
+        away: match.away_team,
+        location: match.location,
+        mainReferee: names[0] || "—",
+        assistants: names.slice(1),
+        approvedUserIds: refs.map((r) => r.user_id),
+      };
+    });
+
+    const visible = currentRole === "admin" ? built : built.filter((item) => item.approvedUserIds.includes(currentUserId));
+    setDelegations(visible.map(({ approvedUserIds, ...rest }) => rest));
+  };
+
+  useEffect(() => {
+    const init = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.user) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const { data: profile, error } = await supabase
+        .from("users")
+        .select("full_name, role")
+        .eq("id", session.user.id)
+        .single();
+
+      if (error || !profile) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const currentRole = profile.role as AppRole;
+      setRole(currentRole);
+      setUserName(profile.full_name || session.user.email || "Uživatel");
+
+      await loadDelegations(currentRole, session.user.id);
+      setLoading(false);
+    };
+
+    init();
+  }, []);
+
+  const handleShare = () => {
+    if (delegations.length === 0) return;
+
+    const text = delegations
+      .map(
+        (item) =>
+          `Delegace rozhodčích — ${formatDate(item.date)}\n${formatTime(item.time)} ${item.home} – ${item.away}\nMísto: ${item.location}\nHlavní rozhodčí: ${item.mainReferee}\nAsistenti: ${item.assistants.length ? item.assistants.join(", ") : "—"}`
+      )
+      .join("\n\n");
+
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  };
+
+  return (
+    <main className="min-h-screen bg-slate-100 pb-24">
+      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-md items-center justify-between px-4 py-4">
+          <div>
+            <div className="text-lg font-bold text-slate-900">Potvrzené delegace</div>
+            <div className="text-sm text-slate-500">{role === "admin" ? "Administrátor" : `Rozhodčí: ${userName}`}</div>
+          </div>
+          <button type="button" onClick={handleLogout} className="flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+            <LogOut className="mr-2 h-4 w-4" />
+            Odhlásit
+          </button>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-md px-4 py-4">
+        <div className="mb-4">
+          <button type="button" onClick={handleShare} disabled={delegations.length === 0} className="flex h-12 w-full items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600">
+            <Share2 className="mr-2 h-4 w-4" />
+            Sdílet přes WhatsApp
+          </button>
+        </div>
+
+        {message ? <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">{message}</div> : null}
+
+        <div className="space-y-4">
+          {loading ? (
+            <div className="rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-slate-200"><div className="text-lg font-semibold text-slate-900">Načítání...</div></div>
+          ) : delegations.length === 0 ? (
+            <div className="rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-slate-200">
+              <div className="text-lg font-semibold text-slate-900">Žádné delegace</div>
+              <p className="mt-2 text-sm text-slate-500">Zatím nemáte žádné potvrzené delegace.</p>
+            </div>
+          ) : (
+            delegations.map((item) => (
+              <article key={item.id} className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">{item.home} – {item.away}</h2>
+                    <p className="text-sm text-slate-500">{item.competition}</p>
+                  </div>
+                  <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">Potvrzeno</span>
+                </div>
+                <div className="space-y-2 text-sm text-slate-700">
+                  <div className="flex items-center gap-2"><Calendar className="h-4 w-4 text-slate-500" /><span>{formatDate(item.date)}</span></div>
+                  <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-slate-500" /><span>{formatTime(item.time)}</span></div>
+                  <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-slate-500" /><span>{item.location}</span></div>
+                </div>
+                <div className="mt-4 space-y-2 rounded-2xl bg-slate-50 p-3 text-sm text-slate-700">
+                  <div><span className="font-semibold">Hlavní rozhodčí:</span> {item.mainReferee}</div>
+                  <div><span className="font-semibold">Asistenti:</span> {item.assistants.length ? item.assistants.join(", ") : "—"}</div>
+                </div>
+              </article>
+            ))
+          )}
+        </div>
+      </div>
+
+      <nav className="fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto grid max-w-md grid-cols-4 gap-2 px-3 py-3 text-center text-xs font-medium text-slate-600">
+          <Link href={role === "admin" ? "/admin" : "/zapasy"} className="rounded-xl px-3 py-2 hover:bg-slate-100">Zápasy</Link>
+          <Link href={role === "admin" ? "/admin/rozhodci" : "/prihlasky"} className="rounded-xl px-3 py-2 hover:bg-slate-100">{role === "admin" ? "Rozhodčí" : "Přihlášky"}</Link>
+          <Link href="/delegace" className="rounded-xl bg-slate-900 px-3 py-2 text-white">Delegace</Link>
+          <Link href="/profil" className="rounded-xl px-3 py-2 hover:bg-slate-100">Profil</Link>
+        </div>
+      </nav>
+    </main>
+  );
+}
