@@ -263,7 +263,7 @@ export default function SuperadminPage() {
                       {user.role === "admin" || user.role === "superadmin" ? <UserCog className="h-6 w-6" /> : <Users className="h-6 w-6" />}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-lg font-bold text-slate-900">{user.full_name || "Bez jména"}{isSelf ? " · vy" : ""}</div>
+                      <div className="truncate text-lg font-bold text-slate-900">{user.full_name || "Bez jména"}</div>
                       <div className="truncate text-sm text-slate-500">{user.email || "Bez emailu"}</div>
                       <div className="mt-1 text-xs text-slate-400">Aktuálně: {roleLabel(user.role)} • {user.organizations?.name || "Bez podsavezu"}</div>
                     </div>
