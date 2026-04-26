@@ -7,6 +7,7 @@ import {
   getOrganizations,
   getSessionProfile,
   type AppOrganization,
+  type AppProfile,
   type AppRole,
   type RegistrationStatus,
 } from "@/lib/auth-profile";
@@ -47,6 +48,7 @@ function statusLabel(status: RegistrationStatus) {
 }
 
 export default function SuperadminPage() {
+  const [currentProfile, setCurrentProfile] = useState<AppProfile | null>(null);
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [organizations, setOrganizations] = useState<AppOrganization[]>([]);
   const [editable, setEditable] = useState<EditableState>({});
@@ -74,6 +76,7 @@ export default function SuperadminPage() {
       return;
     }
 
+    setCurrentProfile(profile);
     setOrganizations(orgs);
 
     const { data, error } = await supabase
@@ -147,6 +150,20 @@ export default function SuperadminPage() {
   const saveUser = async (user: ManagedUser) => {
     const row = editable[user.id];
     if (!row) return;
+
+    const isSelf = currentProfile?.id === user.id;
+
+    if (isSelf && row.role !== "superadmin") {
+      setMessageType("error");
+      setMessage("Nemůžete odebrat roli superadmin sami sobě.");
+      return;
+    }
+
+    if (isSelf && row.registration_status !== "approved") {
+      setMessageType("error");
+      setMessage("Nemůžete zablokovat vlastní superadmin účet.");
+      return;
+    }
 
     const organizationId = row.organization_id ? Number(row.organization_id) : null;
     const cleanFacrId = row.facr_id.trim() || null;
@@ -238,6 +255,7 @@ export default function SuperadminPage() {
           ) : (
             filteredUsers.map((user) => {
               const row = editable[user.id];
+              const isSelf = currentProfile?.id === user.id;
               return (
                 <article key={user.id} className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
                   <div className="mb-4 flex items-start gap-3">
@@ -245,7 +263,7 @@ export default function SuperadminPage() {
                       {user.role === "admin" || user.role === "superadmin" ? <UserCog className="h-6 w-6" /> : <Users className="h-6 w-6" />}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-lg font-bold text-slate-900">{user.full_name || "Bez jména"}</div>
+                      <div className="truncate text-lg font-bold text-slate-900">{user.full_name || "Bez jména"}{isSelf ? " · vy" : ""}</div>
                       <div className="truncate text-sm text-slate-500">{user.email || "Bez emailu"}</div>
                       <div className="mt-1 text-xs text-slate-400">Aktuálně: {roleLabel(user.role)} • {user.organizations?.name || "Bez podsavezu"}</div>
                     </div>
@@ -254,11 +272,12 @@ export default function SuperadminPage() {
                   <div className="space-y-3">
                     <div>
                       <label className="mb-1 block text-xs font-semibold text-slate-600">Role</label>
-                      <select value={row?.role ?? user.role} onChange={(event) => updateEditable(user.id, { role: event.target.value as AppRole })} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200">
+                      <select value={row?.role ?? user.role} disabled={isSelf} onChange={(event) => updateEditable(user.id, { role: event.target.value as AppRole })} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 focus:border-slate-500 focus:ring-2 focus:ring-slate-200">
                         <option value="superadmin">Superadmin</option>
                         <option value="admin">Administrátor</option>
                         <option value="referee">Rozhodčí</option>
                       </select>
+                      {isSelf ? <p className="mt-1 text-xs text-slate-500">Vlastní roli superadmin nelze změnit.</p> : null}
                     </div>
 
                     <div>
@@ -278,7 +297,7 @@ export default function SuperadminPage() {
 
                     <div>
                       <label className="mb-1 block text-xs font-semibold text-slate-600">Stav registrace</label>
-                      <select value={row?.registration_status ?? user.registration_status} onChange={(event) => updateEditable(user.id, { registration_status: event.target.value as RegistrationStatus })} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200">
+                      <select value={row?.registration_status ?? user.registration_status} disabled={isSelf} onChange={(event) => updateEditable(user.id, { registration_status: event.target.value as RegistrationStatus })} className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 focus:border-slate-500 focus:ring-2 focus:ring-slate-200">
                         <option value="pending">{statusLabel("pending")}</option>
                         <option value="approved">{statusLabel("approved")}</option>
                         <option value="rejected">{statusLabel("rejected")}</option>
