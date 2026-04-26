@@ -116,7 +116,7 @@ export default function AdminSettingsPage() {
 
       if (!data) {
         setMessageType("error");
-        setMessage("Podsavez je už jednou nastaven i zaključan. Promenu može da uradi samo superadmin.");
+        setMessage("Podsavez je již nastaven a uzamčen. Změnu může provést pouze superadmin.");
         return;
       }
 
@@ -139,7 +139,7 @@ export default function AdminSettingsPage() {
         <div className="mx-auto flex max-w-md items-center justify-between px-4 py-4">
           <div>
             <div className="text-lg font-bold text-slate-900">Nastavení admina</div>
-            <div className="text-sm text-slate-500">Podsavez i FAČR ID</div>
+            <div className="text-sm text-slate-500">Podsavez a FAČR ID</div>
           </div>
 
           <Link
@@ -166,7 +166,7 @@ export default function AdminSettingsPage() {
                 <div>
                   <h1 className="text-xl font-bold text-slate-900">Profil administrátora</h1>
                   <p className="mt-1 text-sm leading-6 text-slate-500">
-                    Admin može prvi put da izabere podsavez. Posle čuvanja podsavez ostaje zaključan.
+                    Administrátor může podsavez vybrat pouze při prvním nastavení. Po uložení zůstane podsavez uzamčený.
                   </p>
                 </div>
               </div>
@@ -195,12 +195,12 @@ export default function AdminSettingsPage() {
                     <div className="mt-2 flex items-start gap-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600 ring-1 ring-slate-200">
                       <Lock className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
                       <span>
-                        Podsavez je zaključan: {selectedOrganization?.name || profile?.organizations?.name || "nastaven"}. Promenu radi samo superadmin.
+                        Podsavez je uzamčený: {selectedOrganization?.name || profile?.organizations?.name || "nastaveno"}. Změnu může provést pouze superadmin.
                       </span>
                     </div>
                   ) : (
                     <p className="mt-2 text-xs leading-5 text-slate-500">
-                      Ovo je prvo podešavanje. Posle čuvanja izbor će biti zaključan.
+                      Toto je první nastavení. Po uložení bude výběr podsavezu uzamčený.
                     </p>
                   )}
                 </div>
@@ -219,7 +219,7 @@ export default function AdminSettingsPage() {
                     className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-base outline-none transition disabled:cursor-not-allowed disabled:bg-slate-100 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                   />
                   <p className="mt-2 text-xs leading-5 text-slate-500">
-                    FAČR ID može da se ispravi ako je unet pogrešno.
+                    FAČR ID lze opravit, pokud bylo zadáno nesprávně.
                   </p>
                 </div>
 
@@ -252,7 +252,7 @@ export default function AdminSettingsPage() {
             <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
               <h2 className="text-base font-bold text-slate-900">Produkční pravidlo</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Admin sam ne menja podsavez kada je već postavljen, zato se ne mešaju utakmice, sudije i delegacije različitih podsaveza.
+                Administrátor nemůže sám změnit podsavez, pokud už je nastavený. Tím se zabrání promíchání zápasů, rozhodčích a delegací mezi různými podsavezy.
               </p>
             </section>
           </div>
