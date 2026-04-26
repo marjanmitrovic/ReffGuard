@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
 
-export type AppRole = "admin" | "referee";
+export type AppRole = "superadmin" | "admin" | "referee";
 export type RegistrationStatus = "pending" | "approved" | "rejected";
 
 export type AppOrganization = {
@@ -43,6 +43,10 @@ function fallbackName(email?: string | null, metadata?: Record<string, unknown>)
 
 export function isApprovedReferee(profile: AppProfile | null) {
   return profile?.role === "referee" && profile.registration_status === "approved";
+}
+
+export function isSuperadmin(profile: AppProfile | null) {
+  return profile?.role === "superadmin";
 }
 
 export async function getOrganizations() {
