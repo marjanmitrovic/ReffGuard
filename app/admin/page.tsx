@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Calendar, Clock, LogOut, MapPin, Plus, Search, Users } from "lucide-react";
+import { Calendar, Clock, LogOut, MapPin, Plus, Search, Settings, Users } from "lucide-react";
 import { getSessionProfile, requireOrganization, type AppProfile } from "@/lib/auth-profile";
 import { formatDate, formatTime } from "@/lib/date";
 import { supabase } from "@/lib/supabase";
@@ -124,11 +124,14 @@ export default function AdminPage() {
     init();
   }, []);
 
-  const summary = useMemo(() => ({
-    total: matches.length,
-    open: matches.filter((item) => item.status === "open").length,
-    confirmed: matches.filter((item) => item.status === "confirmed").length,
-  }), [matches]);
+  const summary = useMemo(
+    () => ({
+      total: matches.length,
+      open: matches.filter((item) => item.status === "open").length,
+      confirmed: matches.filter((item) => item.status === "confirmed").length,
+    }),
+    [matches]
+  );
 
   const filteredMatches = useMemo(() => {
     const value = search.trim().toLowerCase();
@@ -185,8 +188,14 @@ export default function AdminPage() {
           <div className="rounded-2xl bg-white p-3 text-center shadow-sm ring-1 ring-slate-200"><div className="text-2xl font-bold text-emerald-700">{summary.confirmed}</div><div className="text-xs text-slate-500">Potvrzené</div></div>
         </div>
 
-        <div className="mb-4"><Link href="/admin/zapasy/novy" className="flex h-12 w-full items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"><Plus className="mr-2 h-4 w-4" />Přidat zápas</Link></div>
-        <div className="mb-4"><Link href="/admin/rozhodci" className="flex h-12 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-50">Přehled rozhodčích</Link></div>
+        <div className="mb-4">
+          <Link href="/admin/zapasy/novy" className="flex h-12 w-full items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"><Plus className="mr-2 h-4 w-4" />Přidat zápas</Link>
+        </div>
+
+        <div className="mb-4 grid grid-cols-2 gap-2">
+          <Link href="/admin/rozhodci" className="flex h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-50">Přehled rozhodčích</Link>
+          <Link href="/admin/settings" className="flex h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"><Settings className="mr-2 h-4 w-4" />Profil</Link>
+        </div>
 
         <div className="mb-4 grid grid-cols-2 gap-2">
           {[
@@ -247,7 +256,7 @@ export default function AdminPage() {
           <Link href="/admin" className="rounded-xl bg-slate-900 px-3 py-2 text-white">Admin</Link>
           <Link href="/admin" className="rounded-xl px-3 py-2 hover:bg-slate-100">Zápasy</Link>
           <Link href="/delegace" className="rounded-xl px-3 py-2 hover:bg-slate-100">Delegace</Link>
-          <Link href="/profil" className="rounded-xl px-3 py-2 hover:bg-slate-100">Profil</Link>
+          <Link href="/admin/settings" className="rounded-xl px-3 py-2 hover:bg-slate-100">Profil</Link>
         </div>
       </nav>
     </main>
