@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f1f5f9;
+  --foreground: #0f172a;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-100 text-slate-900 antialiased;
+  }
+
+  input,
+  textarea,
+  select {
+    @apply outline-none;
+  }
+}
+
+@layer utilities {
+  .app-shell {
+    @apply mx-auto max-w-md px-4;
+  }
+
+  .card-mobile {
+    @apply rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200;
+  }
+
+  .btn-primary-mobile {
+    @apply flex h-12 w-full items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800;
+  }
+
+  .btn-secondary-mobile {
+    @apply flex h-12 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-50;
+  }
+
+  .input-mobile {
+    @apply h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-base outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200;
+  }
+
+  .badge-open {
+    @apply bg-amber-100 text-amber-800 ring-1 ring-amber-200;
+  }
+
+  .badge-full {
+    @apply bg-slate-200 text-slate-700 ring-1 ring-slate-300;
+  }
+
+  .badge-confirmed {
+    @apply bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200;
+  }
+
+  .badge-rejected {
+    @apply bg-rose-100 text-rose-800 ring-1 ring-rose-200;
+  }
+}
