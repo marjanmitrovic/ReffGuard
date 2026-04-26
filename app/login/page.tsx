@@ -45,6 +45,12 @@ export default function LoginPage() {
       return;
     }
 
+    if (profile.role === "superadmin") {
+      router.push("/superadmin");
+      router.refresh();
+      return;
+    }
+
     if (profile.role === "admin") {
       router.push("/admin");
       router.refresh();
