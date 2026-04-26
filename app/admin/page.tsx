@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Calendar, Clock, LogOut, MapPin, Plus, Search, Settings, Users } from "lucide-react";
-import { getSessionProfile, requireOrganization, type AppProfile } from "@/lib/auth-profile";
+import { getSessionProfile, type AppProfile } from "@/lib/auth-profile";
 import { formatDate, formatTime } from "@/lib/date";
 import { supabase } from "@/lib/supabase";
 
@@ -107,13 +107,24 @@ export default function AdminPage() {
           window.location.href = "/login";
           return;
         }
+
+        if (profile.role === "superadmin") {
+          window.location.href = "/superadmin";
+          return;
+        }
+
         if (profile.role !== "admin") {
           window.location.href = "/zapasy";
           return;
         }
-        const organizationId = requireOrganization(profile);
+
+        if (!profile.organization_id) {
+          window.location.href = "/admin/settings";
+          return;
+        }
+
         setProfile(profile);
-        await loadMatches(organizationId);
+        await loadMatches(profile.organization_id);
       } catch (err) {
         setMessage(err instanceof Error ? err.message : "Nepodařilo se načíst administraci.");
       } finally {
