@@ -41,6 +41,19 @@ function getStatusClasses(status: MatchStatus) {
   return "bg-emerald-100 text-emerald-800 ring-emerald-200";
 }
 
+async function withTimeout<T>(promise: Promise<T>, message: string, ms = 12000) {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const timeout = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), ms);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 export default function ZapasyPage() {
   const [search, setSearch] = useState("");
   const [userId, setUserId] = useState("");
@@ -53,66 +66,89 @@ export default function ZapasyPage() {
   const loadData = async (currentUserId: string) => {
     setMessage("");
 
-    const { data: matchesData, error: matchesError } = await supabase
-      .from("matches")
-      .select("*")
-      .order("match_date", { ascending: true })
-      .order("match_time", { ascending: true });
+    const matchesResponse = await withTimeout(
+      supabase
+        .from("matches")
+        .select("*")
+        .order("match_date", { ascending: true })
+        .order("match_time", { ascending: true }),
+      "Načítání zápasů trvá příliš dlouho. Zkontrolujte oprávnění tabulky matches."
+    );
 
-    if (matchesError) {
-      setMessage(matchesError.message);
+    if (matchesResponse.error) {
+      setMessage(matchesResponse.error.message);
       setMatches([]);
-      return;
-    }
-
-    setMatches((matchesData ?? []) as DbMatch[]);
-
-    const { data: appsData, error: appsError } = await supabase
-      .from("applications")
-      .select("*")
-      .eq("user_id", currentUserId);
-
-    if (appsError) {
-      setMessage(appsError.message);
       setMyApplications([]);
       return;
     }
 
-    setMyApplications((appsData ?? []) as DbApplication[]);
+    setMatches((matchesResponse.data ?? []) as DbMatch[]);
+
+    const appsResponse = await withTimeout(
+      supabase
+        .from("applications")
+        .select("*")
+        .eq("user_id", currentUserId),
+      "Načítání přihlášek trvá příliš dlouho. Zkontrolujte oprávnění tabulky applications."
+    );
+
+    if (appsResponse.error) {
+      setMessage(appsResponse.error.message);
+      setMyApplications([]);
+      return;
+    }
+
+    setMyApplications((appsResponse.data ?? []) as DbApplication[]);
   };
 
   useEffect(() => {
     const init = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      try {
+        setLoading(true);
+        setMessage("");
 
-      if (!session?.user) {
-        window.location.href = "/login";
-        return;
+        const sessionResponse = await withTimeout(
+          supabase.auth.getSession(),
+          "Načítání relace trvá příliš dlouho. Odhlaste se a přihlaste znovu."
+        );
+
+        const session = sessionResponse.data.session;
+
+        if (!session?.user) {
+          window.location.href = "/login";
+          return;
+        }
+
+        const profileResponse = await withTimeout(
+          supabase
+            .from("users")
+            .select("full_name, role")
+            .eq("id", session.user.id)
+            .single(),
+          "Načítání profilu trvá příliš dlouho. Odhlaste se a přihlaste znovu."
+        );
+
+        if (profileResponse.error || !profileResponse.data) {
+          setMessage(profileResponse.error?.message || "Profil nebyl nalezen.");
+          return;
+        }
+
+        const profile = profileResponse.data;
+
+        if (profile.role !== "referee") {
+          window.location.href = "/admin";
+          return;
+        }
+
+        setUserId(session.user.id);
+        setUserName(profile.full_name || session.user.email || "Rozhodčí");
+
+        await loadData(session.user.id);
+      } catch (err) {
+        setMessage(err instanceof Error ? err.message : "Nepodařilo se načíst zápasy.");
+      } finally {
+        setLoading(false);
       }
-
-      const { data: profile, error } = await supabase
-        .from("users")
-        .select("full_name, role")
-        .eq("id", session.user.id)
-        .single();
-
-      if (error || !profile) {
-        window.location.href = "/login";
-        return;
-      }
-
-      if (profile.role !== "referee") {
-        window.location.href = "/admin";
-        return;
-      }
-
-      setUserId(session.user.id);
-      setUserName(profile.full_name || session.user.email || "Rozhodčí");
-
-      await loadData(session.user.id);
-      setLoading(false);
     };
 
     init();
@@ -133,28 +169,34 @@ export default function ZapasyPage() {
   };
 
   const checkApplicationConflict = async (match: DbMatch) => {
-    const { data: sameTimeMatches, error: matchesError } = await supabase
-      .from("matches")
-      .select("id")
-      .eq("match_date", match.match_date)
-      .eq("match_time", match.match_time)
-      .neq("id", match.id);
+    const sameTimeResponse = await withTimeout(
+      supabase
+        .from("matches")
+        .select("id")
+        .eq("match_date", match.match_date)
+        .eq("match_time", match.match_time)
+        .neq("id", match.id),
+      "Kontrola kolize trvá příliš dlouho."
+    );
 
-    if (matchesError) return matchesError.message;
+    if (sameTimeResponse.error) return sameTimeResponse.error.message;
 
-    const matchIds = (sameTimeMatches ?? []).map((item) => item.id);
+    const matchIds = (sameTimeResponse.data ?? []).map((item) => item.id);
     if (matchIds.length === 0) return null;
 
-    const { data: conflicts, error: conflictsError } = await supabase
-      .from("applications")
-      .select("id")
-      .eq("user_id", userId)
-      .in("match_id", matchIds)
-      .eq("status", "approved");
+    const conflictsResponse = await withTimeout(
+      supabase
+        .from("applications")
+        .select("id")
+        .eq("user_id", userId)
+        .in("match_id", matchIds)
+        .eq("status", "approved"),
+      "Kontrola přihlášek trvá příliš dlouho."
+    );
 
-    if (conflictsError) return conflictsError.message;
+    if (conflictsResponse.error) return conflictsResponse.error.message;
 
-    if ((conflicts ?? []).length > 0) return "Už máte potvrzenou delegaci ve stejný datum a čas.";
+    if ((conflictsResponse.data ?? []).length > 0) return "Už máte potvrzenou delegaci ve stejný datum a čas.";
     return null;
   };
 
@@ -169,18 +211,17 @@ export default function ZapasyPage() {
       return;
     }
 
-    const { error } = await supabase.from("applications").insert({
-      match_id: match.id,
-      user_id: userId,
-      status: "sent",
-    });
+    const response = await withTimeout(
+      supabase.from("applications").insert({
+        match_id: match.id,
+        user_id: userId,
+        status: "sent",
+      }),
+      "Odeslání přihlášky trvá příliš dlouho."
+    );
 
-    if (error) {
-      if (error.code === "23505") {
-        setMessage("Na tento zápas jste už přihlášen.");
-        return;
-      }
-      setMessage(error.message);
+    if (response.error) {
+      setMessage(response.error.code === "23505" ? "Na tento zápas jste už přihlášen." : response.error.message);
       return;
     }
 
@@ -216,7 +257,11 @@ export default function ZapasyPage() {
           </div>
         </div>
 
-        {message ? <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">{message}</div> : null}
+        {message ? (
+          <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            {message}
+          </div>
+        ) : null}
 
         <div className="space-y-4">
           {loading ? (
