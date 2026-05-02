@@ -1,0 +1,48 @@
+name: Keep Supabase Awake
+
+on:
+  schedule:
+    - cron: "0 8 * * 1,4,6"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Supabase database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -e
+
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Missing SUPABASE_URL or SUPABASE_ANON_KEY repository secret."
+            exit 1
+          fi
+
+          TABLES="profiles referees matches assignments clubs users"
+          SUCCESS=0
+
+          for TABLE in $TABLES; do
+            echo "Trying table: $TABLE"
+            STATUS=$(curl -s -o /tmp/supabase_ping_response.txt -w "%{http_code}" \
+              -X GET "$SUPABASE_URL/rest/v1/$TABLE?select=id&limit=1" \
+              -H "apikey: $SUPABASE_ANON_KEY" \
+              -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+
+            echo "HTTP status: $STATUS"
+
+            if [ "$STATUS" = "200" ] || [ "$STATUS" = "206" ]; then
+              SUCCESS=1
+              echo "Supabase database ping succeeded on table: $TABLE"
+              break
+            fi
+          done
+
+          if [ "$SUCCESS" != "1" ]; then
+            echo "No known table responded successfully. Check table names or RLS/API settings."
+            cat /tmp/supabase_ping_response.txt || true
+            exit 1
+          fi
