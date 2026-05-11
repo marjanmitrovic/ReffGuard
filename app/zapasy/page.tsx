@@ -43,8 +43,9 @@ function getStatusClasses(status: MatchStatus) {
   return "bg-emerald-100 text-emerald-800 ring-emerald-200";
 }
 
-async function withTimeout<T>(promise: Promise<T>, message: string, ms = 12000) {
+async function withTimeout<T>(promiseLike: PromiseLike<T>, message: string, ms = 12000) {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const promise = Promise.resolve(promiseLike);
   const timeout = new Promise<T>((_, reject) => {
     timeoutId = setTimeout(() => reject(new Error(message)), ms);
   });
