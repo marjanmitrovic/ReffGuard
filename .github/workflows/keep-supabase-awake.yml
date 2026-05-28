@@ -12,22 +12,24 @@ jobs:
     steps:
       - name: Ping Supabase database
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_URL: https://zzugeqlhjwibabomjxdw.supabase.co
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           set -e
 
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-            echo "Missing SUPABASE_URL or SUPABASE_ANON_KEY repository secret."
+          if [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Missing SUPABASE_ANON_KEY repository secret."
             exit 1
           fi
+
+          echo "Using Supabase URL: $SUPABASE_URL"
 
           TABLES="profiles referees matches assignments clubs users"
           SUCCESS=0
 
           for TABLE in $TABLES; do
             echo "Trying table: $TABLE"
-            STATUS=$(curl -s -o /tmp/supabase_ping_response.txt -w "%{http_code}" \
+            STATUS=$(curl -sS -o /tmp/supabase_ping_response.txt -w "%{http_code}" \
               -X GET "$SUPABASE_URL/rest/v1/$TABLE?select=id&limit=1" \
               -H "apikey: $SUPABASE_ANON_KEY" \
               -H "Authorization: Bearer $SUPABASE_ANON_KEY")
@@ -42,7 +44,7 @@ jobs:
           done
 
           if [ "$SUCCESS" != "1" ]; then
-            echo "No known table responded successfully. Check table names or RLS/API settings."
+            echo "No known table responded successfully. Check table names, RLS/API settings, or anon key."
             cat /tmp/supabase_ping_response.txt || true
             exit 1
           fi
