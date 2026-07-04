@@ -1,0 +1,2 @@
+Trigger Vercel redeploy for ReffGuard keepalive setup.
+Timestamp: 2026-07-04T02:00:00Z
