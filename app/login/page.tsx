@@ -240,7 +240,6 @@ export default function LoginPage() {
                 <input
                   id="fullName"
                   type="text"
-                  placeholder="např. Jan Novák"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-base outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
