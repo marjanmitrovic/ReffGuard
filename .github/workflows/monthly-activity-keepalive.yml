@@ -1,0 +1,38 @@
+name: Monthly Repository Activity Keepalive
+
+on:
+  schedule:
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update activity timestamp
+        run: |
+          {
+            echo "This file is updated automatically to keep scheduled workflows active."
+            echo "Last activity refresh: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          } > .github/activity-keepalive.txt
+
+      - name: Commit activity refresh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git add .github/activity-keepalive.txt
+          git commit -m "Refresh repository activity timestamp"
+          git push
