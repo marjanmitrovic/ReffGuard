@@ -2,49 +2,47 @@ name: Keep Supabase Awake
 
 on:
   schedule:
-    - cron: "0 8 * * 1,4,6"
+    - cron: "0 6 * * *"
   workflow_dispatch:
 
 jobs:
-  ping:
+  keepalive:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Ping Supabase database
+      - name: Write Supabase keepalive row
         env:
           SUPABASE_URL: https://zzugeqlhjwibabomjxdw.supabase.co
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          set -e
+          set -euo pipefail
 
-          if [ -z "$SUPABASE_ANON_KEY" ]; then
+          if [ -z "${SUPABASE_ANON_KEY:-}" ]; then
             echo "Missing SUPABASE_ANON_KEY repository secret."
             exit 1
           fi
 
-          echo "Using Supabase URL: $SUPABASE_URL"
+          echo "Writing keepalive row to Supabase..."
 
-          TABLES="profiles referees matches assignments clubs users"
-          SUCCESS=0
+          STATUS=$(curl -sS -o /tmp/supabase_keepalive_response.txt -w "%{http_code}" \
+            -X POST "$SUPABASE_URL/rest/v1/keepalive_ping?on_conflict=id" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: resolution=merge-duplicates,return=representation" \
+            --data "[{\"id\":1,\"project\":\"ReffGuard\",\"touched_at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}]")
 
-          for TABLE in $TABLES; do
-            echo "Trying table: $TABLE"
-            STATUS=$(curl -sS -o /tmp/supabase_ping_response.txt -w "%{http_code}" \
-              -X GET "$SUPABASE_URL/rest/v1/$TABLE?select=id&limit=1" \
-              -H "apikey: $SUPABASE_ANON_KEY" \
-              -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+          echo "HTTP status: $STATUS"
+          cat /tmp/supabase_keepalive_response.txt || true
 
-            echo "HTTP status: $STATUS"
-
-            if [ "$STATUS" = "200" ] || [ "$STATUS" = "206" ]; then
-              SUCCESS=1
-              echo "Supabase database ping succeeded on table: $TABLE"
-              break
-            fi
-          done
-
-          if [ "$SUCCESS" != "1" ]; then
-            echo "No known table responded successfully. Check table names, RLS/API settings, or anon key."
-            cat /tmp/supabase_ping_response.txt || true
+          if [ "$STATUS" != "200" ] && [ "$STATUS" != "201" ]; then
+            echo "Supabase keepalive write failed. Run supabase/keepalive_ping.sql in Supabase SQL Editor and check SUPABASE_ANON_KEY."
             exit 1
           fi
+
+          echo "Supabase keepalive write succeeded."
+
+      - name: Verify via deployed API route
+        continue-on-error: true
+        run: |
+          curl -sS -i "https://reff-guard.vercel.app/api/keepalive" | head -n 40
